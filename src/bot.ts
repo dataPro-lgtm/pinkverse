@@ -53,13 +53,21 @@ export class Bot {
     for (const p of gs.props) if (p.alive && p.body && p !== target && !p.body.isSensor && p.kind !== 'selfsign') { const b = p.body.bounds; boxes.push([b.min.x - r, b.min.y - r, b.max.x + r, b.max.y + r]); }
     for (const q of gs.enemies) if (q.alive && q !== target && q.body) { const b = q.body.bounds; boxes.push([b.min.x - r, b.min.y - r, b.max.x + r, b.max.y + r]); }
 
+    // moving targets: compare each trajectory point with where the target will be at that step
+    const mv = target && target.type === 'enemy' && target.move ? target.move : null;
+    const at = (i: number) => {
+      if (!mv) return { x: tx!, y: ty! };
+      const k = 0.5 + 0.5 * Math.sin(((target.clock + i * (1000 / 60)) / mv.period) * Math.PI * 2);
+      return { x: mv.x0 + (mv.x1 - mv.x0) * k, y: ty! };
+    };
     const cands: { a: number; p: number; d: number }[] = [];
     for (let a = -1.5; a <= -0.08; a += 0.025) for (let p = 0.04; p <= 1; p += 0.02) {
       const pts = gs.simulate(id, a, p, 200);
       let best = 1e9;
       for (let i = 0; i < pts.length; i++) {
         const q = pts[i];
-        const d = Math.hypot(q.x - tx!, q.y - ty!);
+        const t = at(i);
+        const d = Math.hypot(q.x - t.x, q.y - t.y);
         if (d < best) best = d;
         if (i > 4 && boxes.some(b => q.x > b[0] && q.x < b[2] && q.y > b[1] && q.y < b[3])) break;
       }
